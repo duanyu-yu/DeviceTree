@@ -1,0 +1,47 @@
+#![no_std]
+#![feature(slice_take)]
+#![feature(cstr_from_bytes_until_nul)]
+
+#[cfg_attr(test, macro_use)]
+pub mod tree;
+pub mod fdt;
+pub mod utils;
+
+#[cfg(test)]
+mod tests;
+
+#[macro_use]
+extern crate alloc;
+
+use alloc::vec::Vec;
+
+use crate::tree::node::DeviceTreeNodeWrap;
+use crate::fdt::{
+	header::FdtHeader,
+	blob::{
+		FdtReserveEntry, 
+		FdtStructBlock, 
+		FdtStringBlock
+	},
+};
+
+#[derive(Debug)]
+pub enum DeviceTreeError {
+	/* Device Tree parsing error */
+	BadMagic,
+    BadVersion,
+	BadToken,
+    /* Device Tree processing error */
+	CpuNumInvalid,
+}
+
+pub struct DeviceTree {
+	root: DeviceTreeNodeWrap
+}
+
+pub struct DeviceTreeBlob<'a> {
+	header: FdtHeader,
+    memory_reservation_block: Vec<FdtReserveEntry>,
+    structure_block: FdtStructBlock<'a>,
+    strings_block: FdtStringBlock<'a>
+}
