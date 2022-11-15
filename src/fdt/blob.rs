@@ -6,14 +6,14 @@ pub struct FdtReserveEntry {
 
 pub struct FdtStructBlock<'a>(pub(crate) &'a [u8]);
 
-pub struct FdtStringBlock<'a>(pub(crate) &'a [u8]);
+pub struct FdtStringsBlock<'a>(pub(crate) &'a [u8]);
 
 pub struct FdtPropDescribe {
     pub(crate) len: u32,
     pub(crate) name_off: u32
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Block<'a> {
     TokenBeginNode, 
     TokenEndNode,

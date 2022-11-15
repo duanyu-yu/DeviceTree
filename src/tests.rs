@@ -3,17 +3,20 @@ use alloc::{
 	rc::Rc
 };
 use core::convert::From;
+use libc_print::std_name::println;
 
-use crate::tree::node::{
-	DeviceTreeNode, 
-	DeviceTreeProperty, 
-	StatusValue, 
-	Pairs, 
-	Triplets
-};
 use crate::{
 	DeviceTree,
-	DeviceTreeBlob
+	DeviceTreeBlob,
+	utils,
+	fdt::blob::Block,
+	tree::node::{
+		DeviceTreeNode, 
+		DeviceTreeProperty, 
+		StatusValue, 
+		Pairs, 
+		Triplets
+	},
 };
 
 #[test]
@@ -161,14 +164,80 @@ fn devicetreeblob() {
     assert!(blob.is_ok());
 }
 
+// #[test]
+// fn blob_to_tree() {
+//     let mut dtb: &[u8] = include_bytes!("../../dtb/test1.dtb");
+
+//     let mut blob = DeviceTreeBlob::from_bytes(&mut dtb).unwrap();
+
+//     let tree = blob.to_tree().unwrap();
+
+//     assert_eq!(tree.num_cpus(), 3);
+// }
+
 #[test]
-fn blob_to_tree() {
-    let mut dtb: &[u8] = include_bytes!("../../dtb/test1.dtb");
+fn pop_slice() {
+	let mut bytes: &[u8] = b"yesokyesok";
 
-    let mut blob = DeviceTreeBlob::from_bytes(&mut dtb).unwrap();
+	let first = utils::pop_slice(&mut bytes, 4).unwrap();
 
-    let tree = blob.to_tree().unwrap();
+	assert_eq!(first, b"yeso");
 
-    assert_eq!(tree.num_cpus(), 3);
+	assert_eq!(bytes, b"kyesok");
 }
 
+#[test]
+fn cstr_from_utf8() {
+	use core::ffi::CStr;
+
+	let bytes = b"hello\0world";
+
+	let cstr = CStr::from_bytes_until_nul(bytes).unwrap();
+
+	assert_eq!(cstr.to_str(), Ok("hello"));
+}
+
+#[test]
+fn take_utf8_until_nul_aligned() {
+	let mut bytes: &[u8] = b"hello\0world";
+
+	let str = utils::take_utf8_until_nul_aligned(&mut bytes, 0);
+
+	assert_eq!(str, Some("hello"));
+
+	assert_eq!(bytes, b"world".as_slice());
+}
+
+#[test]
+fn parsing() {
+	let mut dtb: &[u8] = include_bytes!("../../dtb/test1.dtb");
+
+    let blob = DeviceTreeBlob::from_bytes(&mut dtb).unwrap();
+
+	let structure_block = blob.structure_block();
+
+	let mut block_bytes = structure_block.bytes();
+
+	let mut cursor = Block::from_bytes(&mut block_bytes).unwrap();
+
+	assert_eq!(cursor, Block::TokenBeginNode);
+
+	cursor = Block::from_bytes(&mut block_bytes).unwrap();
+
+	assert!(cursor.is_data());
+}
+
+#[test]
+fn strings_block() {
+	let mut dtb: &[u8] = include_bytes!("../../dtb/test1.dtb");
+
+    let blob = DeviceTreeBlob::from_bytes(&mut dtb).unwrap();
+
+	let strings_block = blob.strings_block();
+
+	assert_eq!(strings_block.find(0), Ok("#address-cells"));
+
+	assert_eq!(strings_block.find(15), Ok("#size-cells"));
+
+	assert_eq!(strings_block.find(27), Ok("compatible"));
+}

@@ -8,6 +8,7 @@ use core::{
 	cell::RefCell,
 	convert::From
 };
+use libc_print::std_name::println;
 
 use crate::utils;
 
@@ -96,6 +97,8 @@ impl DeviceTreeNode {
 	/// 
 	/// Return None, if the child not exits; return the old child, if the child already exits
 	pub fn update_child(&mut self, name: &str, node: DeviceTreeNodeWrap) -> Option<DeviceTreeNodeWrap> {
+		println!("[NODE] Adding node: {}", name);
+
 		node.borrow_mut().set_parent(Rc::clone(&self.wrap()));
 
 		self.children.insert(name.to_string(), Rc::clone(&node))
@@ -134,6 +137,8 @@ impl DeviceTreeNode {
 	If the map did not have this key present, None is returned. 
 	If the map did have this key present, the value is updated, and the old value is returned.*/
 	pub fn add_prop(&mut self, name: &str, value: DeviceTreeProperty) -> Option<DeviceTreeProperty> {
+		println!("[NODE] Adding property: {}", name);
+
 		self.properties.insert(name.to_string(), value)
 	}
 

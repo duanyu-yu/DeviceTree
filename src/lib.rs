@@ -21,16 +21,17 @@ use crate::fdt::{
 	blob::{
 		FdtReserveEntry, 
 		FdtStructBlock, 
-		FdtStringBlock
+		FdtStringsBlock
 	},
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum DeviceTreeError {
 	/* Device Tree parsing error */
 	BadMagic,
     BadVersion,
 	BadToken,
+	BadStringsBlockOffset,
     /* Device Tree processing error */
 	CpuNumInvalid,
 }
@@ -43,5 +44,5 @@ pub struct DeviceTreeBlob<'a> {
 	header: FdtHeader,
     memory_reservation_block: Vec<FdtReserveEntry>,
     structure_block: FdtStructBlock<'a>,
-    strings_block: FdtStringBlock<'a>
+    strings_block: FdtStringsBlock<'a>
 }
