@@ -3,19 +3,23 @@ use alloc::{
 	rc::Rc
 };
 use core::convert::From;
-use libc_print::std_name::println;
 
 use crate::{
 	DeviceTree,
 	DeviceTreeBlob,
 	utils,
-	fdt::blob::Block,
-	tree::node::{
-		DeviceTreeNode, 
-		DeviceTreeProperty, 
-		StatusValue, 
-		Pairs, 
-		Triplets
+	fdt::blob::Token,
+	tree::{
+		node::{
+			DeviceTreeNode,
+			AddChild,
+		},
+		prop::{
+			DeviceTreeProperty, 
+			StatusValue, 
+			Pairs, 
+			Triplets
+		}
 	},
 };
 
@@ -39,7 +43,7 @@ fn add_child() {
 
 	child.borrow_mut().set_label("child");
 
-	parent.borrow_mut().update_child("child", Rc::clone(&child));
+	parent.add_child("child", Rc::clone(&child));
 
 	let parent_of_child = Rc::clone(&child.borrow().parent().as_ref().unwrap());
 
@@ -134,7 +138,7 @@ fn cpus() {
 
 #[test]
 fn tree() {
-	let tree = DeviceTree::new();
+	let tree = DeviceTree::new_empty_root();
 
 	let root = tree.root();
 
@@ -142,7 +146,7 @@ fn tree() {
 
 	let cpus = DeviceTreeNode::new_wrap();
 
-	current.borrow_mut().update_child("cpus", Rc::clone(&cpus));
+	current.add_child("cpus", Rc::clone(&cpus));
 
 	current = Rc::clone(&cpus);
 
@@ -150,7 +154,7 @@ fn tree() {
 
 	let cpu_0 = DeviceTreeNode::new_wrap();
 
-	current.borrow_mut().update_child("cpu@0", Rc::clone(&cpu_0));
+	current.add_child("cpu@0", Rc::clone(&cpu_0));
 
 	assert_eq!(tree.num_cpus(), 1);
 }
@@ -163,17 +167,6 @@ fn devicetreeblob() {
 
     assert!(blob.is_ok());
 }
-
-// #[test]
-// fn blob_to_tree() {
-//     let mut dtb: &[u8] = include_bytes!("../../dtb/test1.dtb");
-
-//     let mut blob = DeviceTreeBlob::from_bytes(&mut dtb).unwrap();
-
-//     let tree = blob.to_tree().unwrap();
-
-//     assert_eq!(tree.num_cpus(), 3);
-// }
 
 #[test]
 fn pop_slice() {
@@ -218,13 +211,9 @@ fn parsing() {
 
 	let mut block_bytes = structure_block.bytes();
 
-	let mut cursor = Block::from_bytes(&mut block_bytes).unwrap();
+	let cursor = Token::from_bytes(&mut block_bytes).unwrap();
 
-	assert_eq!(cursor, Block::TokenBeginNode);
-
-	cursor = Block::from_bytes(&mut block_bytes).unwrap();
-
-	assert!(cursor.is_data());
+	assert_eq!(cursor, Token::TokenBeginNode);
 }
 
 #[test]
@@ -240,4 +229,15 @@ fn strings_block() {
 	assert_eq!(strings_block.find(15), Ok("#size-cells"));
 
 	assert_eq!(strings_block.find(27), Ok("compatible"));
+}
+
+#[test]
+fn blob_to_tree() {
+    let mut dtb: &[u8] = include_bytes!("../../dtb/test1.dtb");
+
+    let mut blob = DeviceTreeBlob::from_bytes(&mut dtb).unwrap();
+
+    let tree = blob.to_tree().unwrap();
+
+    assert_eq!(tree.num_cpus(), 4);
 }

@@ -6,11 +6,13 @@ use alloc::{
 };
 use core::{
 	cell::RefCell,
-	convert::From
 };
 use libc_print::std_name::println;
 
-use crate::utils;
+use super::prop::{
+	DeviceTreeProperty,
+	Pairs
+};
 
 /* The #address-cells and #size-cells properties may be used in any device node that has children in the devicetree
 hierarchy and describes how child device nodes should be addressed. 
@@ -24,7 +26,8 @@ pub struct AddressSizeCells {
 
 impl AddressSizeCells {
 	pub fn new() -> Self {
-		AddressSizeCells { address_cells: 2, size_cells: 1 } // Default value of #address-cells and #size-cells
+		// Default value of #address-cells and #size-cells
+		AddressSizeCells { address_cells: 2, size_cells: 1 } 
 	}
 
 	pub fn set(&mut self, address_cells: u32, size_cells: u32) {
@@ -37,9 +40,30 @@ impl AddressSizeCells {
 /// DeviceTreeNode wrapped in Rc<RefCell<DeviceTreeNode>> to have shared references
 pub type DeviceTreeNodeWrap = Rc<RefCell<DeviceTreeNode>>;
 
-/* Node of devicetree */
+pub trait AddChild {
+	fn add_child(&self, name: &str, child: DeviceTreeNodeWrap) -> Option<DeviceTreeNodeWrap>;
+}
+
+impl AddChild for DeviceTreeNodeWrap {
+	/// Add child to the current node
+	/// 
+	/// If the current node did not have the child present, None is returned.
+	/// 
+	/// If the current node did have the child present, the child is updated, and the old child is returned.
+	fn add_child(&self, name: &str, child: DeviceTreeNodeWrap) -> Option<DeviceTreeNodeWrap> {
+		println!("[NODE] Adding subnode '{}' to node '{}'.", name, self.borrow().name());
+
+		child.borrow_mut().set_name(name);
+		child.borrow_mut().set_parent(Rc::clone(&self));
+
+		self.borrow_mut().children.insert(name.to_string(), Rc::clone(&child))
+	}
+}
+
+/// Node of devicetree 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct DeviceTreeNode {
+	name: String,
 	parent: Option<DeviceTreeNodeWrap>,
 	children: BTreeMap<String, DeviceTreeNodeWrap>,
 	/// Properties consist of a name and a value. Keys of properties are their names.
@@ -51,7 +75,8 @@ pub struct DeviceTreeNode {
 
 impl DeviceTreeNode {
 	pub fn new() -> Self {
-		DeviceTreeNode {
+		Self {
+			name: String::new(),
 			parent: None,
 			children: BTreeMap::new(),
 			properties: BTreeMap::new(),
@@ -61,27 +86,23 @@ impl DeviceTreeNode {
 	}
 
 	pub fn new_wrap() -> DeviceTreeNodeWrap {
-		Rc::new(RefCell::new(
-			DeviceTreeNode {
-				parent: None,
-				children: BTreeMap::new(),
-				properties: BTreeMap::new(),
-				addresssizecells: AddressSizeCells::new(),
-				label: None
-			}
-		))
+		Rc::new(RefCell::new(Self::new()))
 		
 	}
 
-	pub fn wrap(&self) -> DeviceTreeNodeWrap {
-		Rc::new(RefCell::new(self.clone()))
+	pub fn name(&self) -> &str {
+		&self.name
+	}
+
+	pub fn set_name(&mut self, name: &str) {
+		self.name = name.to_string();
 	}
 
     pub fn label(&self) -> Option<&String> {
         self.label.as_ref()
     }
 
-    pub fn set_label(&mut self, label:&str) {
+    pub fn set_label(&mut self, label: &str) {
         self.label = Some(label.to_string());
     }
 
@@ -90,27 +111,11 @@ impl DeviceTreeNode {
     }
 
 	pub fn set_parent(&mut self, parent: DeviceTreeNodeWrap) {
-		self.parent = Some(parent);
+		self.parent = Some(Rc::clone(&parent));
 	}
 
-	/// Add child
-	/// 
-	/// Return None, if the child not exits; return the old child, if the child already exits
-	pub fn update_child(&mut self, name: &str, node: DeviceTreeNodeWrap) -> Option<DeviceTreeNodeWrap> {
-		println!("[NODE] Adding node: {}", name);
-
-		node.borrow_mut().set_parent(Rc::clone(&self.wrap()));
-
-		self.children.insert(name.to_string(), Rc::clone(&node))
-	}
-
-	/// Add child, and return this child
-	pub fn add_child(&mut self, name: &str, node: DeviceTreeNodeWrap) -> DeviceTreeNodeWrap {
-		node.borrow_mut().set_parent(Rc::clone(&self.wrap()));
-
-		self.children.insert(name.to_string(), Rc::clone(&node));
-
-		Rc::clone(&node)
+	pub fn has_parent(&self) -> bool {
+		self.parent.is_some()
 	}
 
 	pub fn find_child(&self, name: &str) -> Option<&DeviceTreeNodeWrap> { 
@@ -133,17 +138,20 @@ impl DeviceTreeNode {
 		self.properties.contains_key(name)
 	}
 
-	/* Add a property into property-map:
-	If the map did not have this key present, None is returned. 
-	If the map did have this key present, the value is updated, and the old value is returned.*/
+	/// Add a property into property-map of the current node:
+	/// 
+	/// If the map did not have this key present, None is returned. 
+	/// 
+	/// If the map did have this key present, the value is updated, and the old value is returned.
 	pub fn add_prop(&mut self, name: &str, value: DeviceTreeProperty) -> Option<DeviceTreeProperty> {
-		println!("[NODE] Adding property: {}", name);
+		println!("[NODE] Adding property '{}' to node '{}'.", name, self.name());
 
 		self.properties.insert(name.to_string(), value)
 	}
 
-	/* Removes a property from the property-map: 
-	returning the stored name and value of the property if the property was previously in the map. */
+	/// Removes a property from the property-map: 
+	/// 
+	/// returning the stored name and value of the property if the property was previously in the map.
 	pub fn remove_prop(&mut self, name: &str) -> Option<(String, DeviceTreeProperty)> {
 		self.properties.remove_entry(name)
 	}
@@ -154,7 +162,7 @@ impl DeviceTreeNode {
 
 
 	/* Device-Tree specific actions */
-	// create new /cpu node
+	/// create a new /cpu node
 	pub fn new_cpu(reg: u32) -> DeviceTreeNodeWrap {
 		let cpu_node = DeviceTreeNode::new_wrap();
 
@@ -164,107 +172,5 @@ impl DeviceTreeNode {
 		// TODO: further properties required: clock-frequency, timebase-frequency
 
 		Rc::clone(&cpu_node)
-	}
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum StatusValue {
-	Okay,
-	Disabled,
-	Reserved,
-	Fail,
-	FailSss,
-}
-
-impl StatusValue {
-	pub fn to_string(&self) -> String {
-		match self {
-			StatusValue::Okay => String::from("okay"),
-			StatusValue::Disabled => String::from("disabled"),
-			StatusValue::Reserved => String::from("reserved"),
-			StatusValue::Fail => String::from("fail"),
-			StatusValue::FailSss => String::from("fail-sss")
-		}
-	}
-}
-
-/* Property of devicetree: 
-Each node in the devicetree has properties that describe the characteristics of the node. */
-#[derive(Clone, PartialEq, Debug)]
-pub enum DeviceTreeProperty {
-	Empty,
-	StringList(Vec<String>), // Specifies a list of platform architectures with which this platform is compatible. This property can be used by operating systems in selecting platform specific code. The recommended form of the property value is: "manufacturer,model"
-	String(String), // Specifies a string that uniquely identifies the model of the system board. The recommended format is “manufacturer,model-number”.
-	U32(u32),
-	U64(u64),
-	Status(StatusValue),
-	Pairs(Pairs),
-	Triplets(Option<Triplets>),
-	Bytes(Vec<u8>)
-}
-
-impl DeviceTreeProperty {
-	pub fn to_stringfmt(&self) -> String { 
-		match self {
-			DeviceTreeProperty::Empty => String::new(),
-			DeviceTreeProperty::StringList(v) => utils::vec_strings_fmt(v),  
-			DeviceTreeProperty::String(v) => v.to_string(),
-			DeviceTreeProperty::U32(v) => format!("0x{:X}", v),
-			DeviceTreeProperty::U64(v) => format!("0x{:X}", v),
-			DeviceTreeProperty::Status(v) => v.to_string(),
-			DeviceTreeProperty::Pairs(v) => v.clone().into(),
-			DeviceTreeProperty::Triplets(v) => v.as_ref().unwrap().clone().into(),
-			DeviceTreeProperty::Bytes(v) => String::from_utf8(v.to_vec()).unwrap()
-		}
-	}
-}
-
-// Vector of pairs: one of formats of prop-encoded-array
-#[derive(Clone, PartialEq, Debug)]
-pub struct Pairs(pub(crate) Vec<(Vec<u32>, Vec<u32>)>);
-
-impl Pairs {
-	pub fn new() -> Self {
-		Pairs(Vec::new())
-	}
-}
-
-impl From<Pairs> for String {
-	fn from(pairs: Pairs) -> Self {
-		let mut v = Vec::new();
-
-		for (a, b) in pairs.0 {
-			let v_inner = [a, b].concat();
-
-			let v_str: Vec<String> = v_inner.iter().map(|&i| format!("0x{:X}", i)).collect();
-
-			let str = v_str.join(" ");
-
-			v.push(str);
-		}
-
-		v.join(" ")
-	}
-}
-
-// Vector of triplets: one of formats of prop-encoded-array
-#[derive(Clone, PartialEq, Debug)]
-pub struct Triplets(pub(crate) Vec<(Vec<u32>, Vec<u32>, Vec<u32>)>);
-
-impl From<Triplets> for String {
-	fn from(triplets: Triplets) -> Self {
-		let mut v = Vec::new();
-
-		for (a, b, c) in triplets.0 {
-			let v_inner = [a, b, c].concat();
-
-			let v_str: Vec<String> = v_inner.iter().map(|&i| format!("0x{:X}", i)).collect();
-
-			let str = v_str.join(" ");
-
-			v.push(str);
-		}
-
-		v.join(" ")
 	}
 }

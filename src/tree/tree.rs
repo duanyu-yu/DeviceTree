@@ -7,23 +7,30 @@ use crate::{
 	DeviceTree, 
 	DeviceTreeError
 };
-use crate::tree::node::{
-	DeviceTreeNodeWrap, 
-	DeviceTreeNode,
-	DeviceTreeProperty
+use crate::tree::{
+	node::{
+		DeviceTreeNodeWrap, 
+		DeviceTreeNode,
+		AddChild
+	},
+	prop::DeviceTreeProperty
 };
 
 use super::CPU_MAX_NUM;
 
 impl DeviceTree {
-	pub fn new() -> Self {
+	pub fn new_empty_root() -> Self {
 		DeviceTree {
 			root: DeviceTreeNode::new_wrap()
 		}
 	}
 
+	pub fn new(root: DeviceTreeNodeWrap) -> Self {
+		Self { root: Rc::clone(&root) }
+	}
+
 	pub fn init() -> Result<Self, DeviceTreeError> {
-        let mut tree = DeviceTree::new();
+        let mut tree = DeviceTree::new_empty_root();
 
         tree.add_cpus(1)?;
         tree.add_memory();
@@ -69,13 +76,13 @@ impl DeviceTree {
         match num {
             1..=CPU_MAX_NUM => for reg in 0..num 
             { 
-                cpus_node.borrow_mut().update_child(&format!("cpu@{}", reg), DeviceTreeNode::new_cpu(reg));
+                cpus_node.add_child(&format!("cpu@{}", reg), DeviceTreeNode::new_cpu(reg));
                 result = Ok(Rc::clone(&cpus_node));
             },
             _ => ()
         }
 
-		root.borrow_mut().update_child("cpus", Rc::clone(&cpus_node));
+		root.add_child("cpus", Rc::clone(&cpus_node));
 
         return result;
 	}
@@ -89,7 +96,7 @@ impl DeviceTree {
 		memory_node.borrow_mut().add_prop("device_type", DeviceTreeProperty::String("memory".to_string()));
 		// TODO: further properties required: reg
 
-		root.borrow_mut().update_child("memory", Rc::clone(&memory_node));
+		root.add_child("memory", Rc::clone(&memory_node));
     }
 
 	pub fn add_net(&mut self, mac: [u8; 6]) {
@@ -99,6 +106,6 @@ impl DeviceTree {
 		// Set local-mac-address property 
 		net_node.borrow_mut().add_prop("local-mac-address", DeviceTreeProperty::Bytes(mac.to_vec()));
 
-		root.borrow_mut().update_child("net", Rc::clone(&net_node));
+		root.add_child("net", Rc::clone(&net_node));
 	}
 }

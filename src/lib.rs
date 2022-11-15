@@ -28,10 +28,11 @@ use crate::fdt::{
 #[derive(Debug, PartialEq)]
 pub enum DeviceTreeError {
 	/* Device Tree parsing error */
-	BadMagic,
-    BadVersion,
+	BadMagic(u32),
+    BadVersion(u32),
 	BadToken,
 	BadStringsBlockOffset,
+	NotAToken,
     /* Device Tree processing error */
 	CpuNumInvalid,
 }

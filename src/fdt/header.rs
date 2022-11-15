@@ -40,7 +40,7 @@ pub struct FdtHeader {
 
 impl FdtHeader {
     pub fn from_bytes(bytes: &mut &[u8]) -> Result<Self, DeviceTreeError> {
-        println!("[Header] Parsing FDT header from bytes.");
+        println!("[HEADER] Parsing FDT header from bytes.");
 
         let header = Self {
             magic: utils::take_be_u32(bytes).unwrap(), 
@@ -72,14 +72,14 @@ impl FdtHeader {
     pub fn magic_check(&self) -> Result<(), DeviceTreeError> {
         match self.magic {
             FDT_MAGIC => Ok(()),
-            _ => Err(DeviceTreeError::BadMagic)
+            bad => Err(DeviceTreeError::BadMagic(bad))
         }
     }
 
     pub fn version_check(&self) -> Result<(), DeviceTreeError> {
         match self.version {
             VERSION_NUMBER => Ok(()), 
-            _ => Err(DeviceTreeError::BadVersion)
+            bad => Err(DeviceTreeError::BadVersion(bad))
         }
     }
 

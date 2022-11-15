@@ -14,11 +14,10 @@ pub struct FdtPropDescribe {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub enum Block<'a> {
+pub enum Token {
     TokenBeginNode, 
     TokenEndNode,
     TokenProp, 
     TokenNop,
-    TokenEnd,
-    Data(&'a [u8])
+    TokenEnd
 }

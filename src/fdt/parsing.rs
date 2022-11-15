@@ -11,14 +11,20 @@ use crate::{
     DeviceTree, 
     DeviceTreeError, 
     DeviceTreeBlob,
-    tree::node::{DeviceTreeNode, DeviceTreeProperty}
+    tree::{
+        node::{
+            DeviceTreeNode, 
+            AddChild
+        }, 
+        prop::DeviceTreeProperty
+    }
 };
 use super::blob::{
     FdtReserveEntry,
     FdtPropDescribe,
     FdtStructBlock,
     FdtStringsBlock,
-    Block
+    Token
 };
 
 /* FDT Token */
@@ -30,7 +36,7 @@ const FDT_END: u32 = 0x00000009;
 
 impl<'a> DeviceTreeBlob<'a> {
     pub fn from_bytes(bytes: &mut &'a [u8]) -> Result<Self, DeviceTreeError> {
-        println!("[BLOB] Parsing dtb; dtb located at {:#x}", bytes as *const _ as usize);
+        println!("[BLOB] Device-Tree-Blob located at {:#x}", bytes as *const _ as usize);
 
         let header = FdtHeader::from_bytes(bytes)?;
 
@@ -87,18 +93,9 @@ impl FdtReserveEntry {
 
 impl FdtPropDescribe {
     pub fn from_bytes(bytes: &mut &[u8]) -> Option<Self> {
-        println!("[BLOB] Before read prop describe: {:?}", bytes);
-
-        let len = utils::take_be_u32(bytes)?;
-        let name_off = utils::take_be_u32(bytes)?;
-
-        println!("[BLOB] Prop: len = {}, name_off = {}", len, name_off);
-
-        println!("[BLOB] After read prop describe: {:?}", bytes);
-
         Some( Self {
-            len: len,
-            name_off: name_off 
+            len: utils::take_be_u32(bytes)?,
+            name_off: utils::take_be_u32(bytes)? 
         })
     }
 
@@ -129,81 +126,61 @@ impl<'a> FdtStructBlock<'a> {
     pub fn parsing(&mut self, strings_block: &FdtStringsBlock) -> Result<DeviceTree, DeviceTreeError> {
         println!("[BLOB] Converting dtb to tree structure.");
 
-        let tree = DeviceTree::new();
-        let root = tree.root();
+        let mut current = DeviceTreeNode::new_wrap();
 
-        let mut current = Rc::clone(root);
-        let mut last = DeviceTreeNode::new_wrap();
+        current.borrow_mut().set_name("root");
 
-        let mut token = Block::TokenBeginNode;
+        let mut bytes = self.0;
 
-        while let Some(cursor) = Block::from_bytes(&mut self.0) {
-            if cursor.is_end() {
-                break;
-            }
+        loop {
+            let token = Token::from_bytes(&mut bytes)?;
 
-            match cursor {
-                Block::Data(mut bytes) => { 
-                    match token {
-                        Block::TokenBeginNode => { 
-                            let name = utils::take_utf8_until_nul_aligned(&mut bytes, 4).unwrap();
-
-                            self.0 = bytes;
-
-                            if name == "" {
-                                println!("[BLOB] Adding root node.");
-                                continue;
-                            }
-
-                            let next = DeviceTreeNode::new_wrap();
-                            current.borrow_mut().update_child(name, Rc::clone(&next));
-                            last = Rc::clone(&current);
-                            current = Rc::clone(&next);
-                            
-                        }
-                        Block::TokenProp => {
-                            let prop_describe = FdtPropDescribe::from_bytes(&mut bytes).unwrap();
-
-                            println!("[BLOB] Property describe data: {}", prop_describe);
-
-                            let name = strings_block.find(prop_describe.name_off()).unwrap();
-
-                            println!("[BLOB] Before take value: {:?}", bytes);
-
-                            let value = utils::take_aligned(&mut bytes, prop_describe.len(), 4).unwrap();
-
-                            println!("[BLOB] After take value: {:?}", bytes);
-
-                            println!("[BLOB] Property: {} = {}", name, CStr::from_bytes_until_nul(value).unwrap().to_str().unwrap());
-
-                            self.0 = bytes;
-
-                            current.borrow_mut().add_prop(name, DeviceTreeProperty::Bytes(value.to_vec()));
-                        }
-                        Block::TokenEndNode => {
-                            current = Rc::clone(&last);
-                        }
-                        _ => ()
+            match token {
+                Token::TokenBeginNode => { 
+                    let name = utils::take_utf8_until_nul_aligned(&mut bytes, 4).unwrap();
+    
+                    if name == "" {
+                        println!("[BLOB] Adding root node.");
+                        continue;
                     }
+    
+                    let next = DeviceTreeNode::new_wrap();
+
+                    current.add_child(name, Rc::clone(&next));
+
+                    current = Rc::clone(&next);
                 }
-                Block::TokenProp => {
-                    if token.is_end_node() {
-                        return Err(DeviceTreeError::BadToken);
+                Token::TokenProp => {
+                    let prop_describe = FdtPropDescribe::from_bytes(&mut bytes).unwrap();
+        
+                    let name = strings_block.find(prop_describe.name_off()).unwrap();
+        
+                    let value = utils::take_aligned(&mut bytes, prop_describe.len(), 4).unwrap();
+                
+                    current.borrow_mut().add_prop(name, DeviceTreeProperty::Bytes(value.to_vec()));
+                }
+                Token::TokenEndNode => {
+                    println!("[BLOB] End of node '{}'.", current.borrow().name());
+
+                    if !current.borrow().has_parent() {
+                        break;
                     }
 
-                    token = cursor;
+                    let parent = Rc::clone(&current.borrow().parent().unwrap());
+
+                    current = Rc::clone(&parent);
                 }
-                Block::TokenNop => (),
-                _ => token = cursor,
+                Token::TokenEnd => {
+                    break;
+                }
+                _ => ()
             }
         }
 
-        if token.is_begin_node() || token.is_prop() {
-            return Err(DeviceTreeError::BadToken);
-        }
+        println!("[BLOB] End of parsing.");
+        println!("");
 
-        Ok(tree)
-
+        Ok(DeviceTree::new(current))
     }
 }
 
@@ -217,36 +194,24 @@ impl<'a> FdtStringsBlock<'a> {
             return Err(DeviceTreeError::BadStringsBlockOffset);
         }
 
-        println!("[BLOB] Searching for property name at offset {}", offset);
-
         let find = self.0.get(offset..).unwrap();
 
         let name = CStr::from_bytes_until_nul(find).unwrap().to_str().unwrap();
-
-        println!("[BLOB] Find name '{}' at offset {}", name, offset);
 
         Ok(name)
     }
 }
 
-impl<'a> Block<'a> {
-    pub fn from_bytes(bytes: &mut &'a [u8]) -> Option<Self> {
-        let mut output = Self::Data(bytes);
-
-        match utils::read_first_be_u32(bytes)? {
-            FDT_BEGIN_NODE => output = Self::TokenBeginNode,
-            FDT_END_NODE => output = Self::TokenEndNode,
-            FDT_PROP => output = Self::TokenProp, 
-            FDT_NOP => output = Self::TokenNop,
-            FDT_END => output = Self::TokenEnd,
-            _ => ()
+impl Token {
+    pub fn from_bytes(bytes: &mut &[u8]) -> Result<Self, DeviceTreeError> {
+        match utils::take_be_u32(bytes).unwrap() {
+            FDT_BEGIN_NODE => Ok(Self::TokenBeginNode),
+            FDT_END_NODE => Ok(Self::TokenEndNode),
+            FDT_PROP => Ok(Self::TokenProp), 
+            FDT_NOP => Ok(Self::TokenNop),
+            FDT_END => Ok(Self::TokenEnd),
+            _ => Err(DeviceTreeError::NotAToken)
         }
-
-        if !output.is_data() {
-            utils::pop_slice(bytes, 4)?;
-        }
-
-        Some(output)
     }
 
     pub fn is_begin_node(self) -> bool {
@@ -268,23 +233,11 @@ impl<'a> Block<'a> {
     pub fn is_end(self) -> bool {
         self == Self::TokenEnd
     }
-
-    pub fn is_data(self) -> bool {
-        utils::variant_eq(&self, &Self::Data(&[]))
-    }
-
-    pub fn data(&self) -> Option<&[u8]> {
-        match self {
-            Self::Data(bytes) => Some(bytes),
-            _ => None
-        }
-    } 
 }
 
-impl<'a> core::fmt::Display for Block<'a> {
+impl core::fmt::Display for Token {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::Data(bytes) => write!(f, "{:x?}", bytes),
             Self::TokenBeginNode => write!(f, "TOKEN_BEGIN_NODE"),
             Self::TokenEndNode => write!(f, "TOKEN_END_NODE"),
             Self::TokenProp => write!(f, "TOKEN_PROP"),
