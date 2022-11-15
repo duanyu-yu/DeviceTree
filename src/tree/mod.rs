@@ -1,4 +1,5 @@
 pub mod node;
+pub mod prop;
 
 mod tree;
 

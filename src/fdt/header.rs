@@ -1,5 +1,9 @@
-use crate::DeviceTreeError;
-use crate::utils;
+use libc_print::std_name::println;
+
+use crate::{
+    utils, 
+    DeviceTreeError
+};
 
 /// FDT Header Magic Number
 const FDT_MAGIC: u32 = 0xd00dfeed;
@@ -36,6 +40,8 @@ pub struct FdtHeader {
 
 impl FdtHeader {
     pub fn from_bytes(bytes: &mut &[u8]) -> Result<Self, DeviceTreeError> {
+        println!("[HEADER] Parsing FDT header from bytes.");
+
         let header = Self {
             magic: utils::take_be_u32(bytes).unwrap(), 
             totalsize: utils::take_be_u32(bytes).unwrap(), 
@@ -52,22 +58,28 @@ impl FdtHeader {
         let check = header.check();
 
         match check {
-            Ok(_) => Ok(header),
-            Err(error) => Err(error)
+            Ok(_) => {
+                println!("[HEADER] Valid header!");
+                return Ok(header);
+            },
+            Err(error) => {
+                println!("[HEADER] Invalid magic number and/or version!");
+                return Err(error);
+            }
         }
     }
 
     pub fn magic_check(&self) -> Result<(), DeviceTreeError> {
         match self.magic {
             FDT_MAGIC => Ok(()),
-            _ => Err(DeviceTreeError::BadMagic)
+            bad => Err(DeviceTreeError::BadMagic(bad))
         }
     }
 
     pub fn version_check(&self) -> Result<(), DeviceTreeError> {
         match self.version {
             VERSION_NUMBER => Ok(()), 
-            _ => Err(DeviceTreeError::BadVersion)
+            bad => Err(DeviceTreeError::BadVersion(bad))
         }
     }
 

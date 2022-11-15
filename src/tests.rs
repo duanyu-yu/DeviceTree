@@ -4,16 +4,23 @@ use alloc::{
 };
 use core::convert::From;
 
-use crate::tree::node::{
-	DeviceTreeNode, 
-	DeviceTreeProperty, 
-	StatusValue, 
-	Pairs, 
-	Triplets
-};
 use crate::{
 	DeviceTree,
-	DeviceTreeBlob
+	DeviceTreeBlob,
+	utils,
+	fdt::blob::Token,
+	tree::{
+		node::{
+			DeviceTreeNode,
+			AddChild,
+		},
+		prop::{
+			DeviceTreeProperty, 
+			StatusValue, 
+			Pairs, 
+			Triplets
+		}
+	},
 };
 
 #[test]
@@ -36,7 +43,7 @@ fn add_child() {
 
 	child.borrow_mut().set_label("child");
 
-	parent.borrow_mut().update_child("child", Rc::clone(&child));
+	parent.add_child("child", Rc::clone(&child));
 
 	let parent_of_child = Rc::clone(&child.borrow().parent().as_ref().unwrap());
 
@@ -131,7 +138,7 @@ fn cpus() {
 
 #[test]
 fn tree() {
-	let tree = DeviceTree::new();
+	let tree = DeviceTree::new_empty_root();
 
 	let root = tree.root();
 
@@ -139,7 +146,7 @@ fn tree() {
 
 	let cpus = DeviceTreeNode::new_wrap();
 
-	current.borrow_mut().update_child("cpus", Rc::clone(&cpus));
+	current.add_child("cpus", Rc::clone(&cpus));
 
 	current = Rc::clone(&cpus);
 
@@ -147,7 +154,7 @@ fn tree() {
 
 	let cpu_0 = DeviceTreeNode::new_wrap();
 
-	current.borrow_mut().update_child("cpu@0", Rc::clone(&cpu_0));
+	current.add_child("cpu@0", Rc::clone(&cpu_0));
 
 	assert_eq!(tree.num_cpus(), 1);
 }
@@ -162,6 +169,69 @@ fn devicetreeblob() {
 }
 
 #[test]
+fn pop_slice() {
+	let mut bytes: &[u8] = b"yesokyesok";
+
+	let first = utils::pop_slice(&mut bytes, 4).unwrap();
+
+	assert_eq!(first, b"yeso");
+
+	assert_eq!(bytes, b"kyesok");
+}
+
+#[test]
+fn cstr_from_utf8() {
+	use core::ffi::CStr;
+
+	let bytes = b"hello\0world";
+
+	let cstr = CStr::from_bytes_until_nul(bytes).unwrap();
+
+	assert_eq!(cstr.to_str(), Ok("hello"));
+}
+
+#[test]
+fn take_utf8_until_nul_aligned() {
+	let mut bytes: &[u8] = b"hello\0world";
+
+	let str = utils::take_utf8_until_nul_aligned(&mut bytes, 0);
+
+	assert_eq!(str, Some("hello"));
+
+	assert_eq!(bytes, b"world".as_slice());
+}
+
+#[test]
+fn parsing() {
+	let mut dtb: &[u8] = include_bytes!("../../dtb/test1.dtb");
+
+    let blob = DeviceTreeBlob::from_bytes(&mut dtb).unwrap();
+
+	let structure_block = blob.structure_block();
+
+	let mut block_bytes = structure_block.bytes();
+
+	let cursor = Token::from_bytes(&mut block_bytes).unwrap();
+
+	assert_eq!(cursor, Token::TokenBeginNode);
+}
+
+#[test]
+fn strings_block() {
+	let mut dtb: &[u8] = include_bytes!("../../dtb/test1.dtb");
+
+    let blob = DeviceTreeBlob::from_bytes(&mut dtb).unwrap();
+
+	let strings_block = blob.strings_block();
+
+	assert_eq!(strings_block.find(0), Ok("#address-cells"));
+
+	assert_eq!(strings_block.find(15), Ok("#size-cells"));
+
+	assert_eq!(strings_block.find(27), Ok("compatible"));
+}
+
+#[test]
 fn blob_to_tree() {
     let mut dtb: &[u8] = include_bytes!("../../dtb/test1.dtb");
 
@@ -169,6 +239,5 @@ fn blob_to_tree() {
 
     let tree = blob.to_tree().unwrap();
 
-    assert_eq!(tree.num_cpus(), 3);
+    assert_eq!(tree.num_cpus(), 4);
 }
-
