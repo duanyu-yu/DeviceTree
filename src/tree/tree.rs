@@ -71,7 +71,7 @@ impl DeviceTree {
 
         // In the cpus node, #address-cells is set to 1, and #size-cells is set to 0. 
         // This means that child reg values are a single uint32 that represent the address with no size field.
-        cpus_node.borrow_mut().set_ascells(1, 0);
+        cpus_node.borrow_mut().set_numcells(1, 0);
 
         let mut result = Err(DeviceTreeError::CpuNumInvalid);
 
@@ -95,7 +95,7 @@ impl DeviceTree {
         let memory_node = DeviceTreeNode::new_wrap();
 
 		// Required properties of a memory node
-		memory_node.borrow_mut().add_prop("device_type", DeviceTreeProperty::String("memory".to_string()));
+		memory_node.borrow_mut().update_prop("device_type", DeviceTreeProperty::String("memory".to_string()));
 		// TODO: further properties required: reg
 
 		root.add_child("memory", Rc::clone(&memory_node));
@@ -106,7 +106,7 @@ impl DeviceTree {
 		let net_node = DeviceTreeNode::new_wrap();
 
 		// Set local-mac-address property 
-		net_node.borrow_mut().add_prop("local-mac-address", DeviceTreeProperty::Bytes(mac.to_vec()));
+		net_node.borrow_mut().update_prop("local-mac-address", DeviceTreeProperty::Bytes(mac.to_vec()));
 
 		root.add_child("net", Rc::clone(&net_node));
 	}

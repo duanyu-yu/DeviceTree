@@ -34,6 +34,9 @@ pub enum DeviceTreeError {
 	BadToken,
 	BadStringsBlockOffset,
 	NotAToken,
+	BadPropValue,
+	BadPropType,
+	PropAlreadyParsed,
     /* Device Tree processing error */
 	CpuNumInvalid,
 }

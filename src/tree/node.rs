@@ -14,9 +14,11 @@ use log::{
     error
 };
 
+use crate::{DeviceTreeError, utils};
+
 use super::prop::{
 	DeviceTreeProperty,
-	AddressSizeCells,
+	NumCells,
 	Pairs
 };
 
@@ -33,7 +35,7 @@ pub struct DeviceTreeNode {
 	/// Properties consist of a name and a value. Keys of properties are their names.
 	properties: BTreeMap<String, DeviceTreeProperty>, 
 	/// Required for all nodes that have children. Default: #address-cells=2 and #size-cells=1
-	addresssizecells: AddressSizeCells, 
+	num_cells: NumCells, 
 	label: Option<String>
 }
 
@@ -44,7 +46,7 @@ impl DeviceTreeNode {
 			parent: None,
 			children: BTreeMap::new(),
 			properties: BTreeMap::new(),
-			addresssizecells: AddressSizeCells::new(),
+			num_cells: NumCells::new(),
 			label: None
 		}
 	}
@@ -98,7 +100,7 @@ impl DeviceTreeNode {
 		self.children.len()
 	}
 
-	pub fn prop(&self, name: &str) -> Option<&DeviceTreeProperty>{
+	pub fn prop_value(&self, name: &str) -> Option<&DeviceTreeProperty>{
 		self.properties.get(name)
 	}
 
@@ -115,8 +117,8 @@ impl DeviceTreeNode {
 	/// If the map did not have this key present, None is returned. 
 	/// 
 	/// If the map did have this key present, the value is updated, and the old value is returned.
-	pub fn add_prop(&mut self, name: &str, value: DeviceTreeProperty) -> Option<DeviceTreeProperty> {
-		debug!("Adding property '{}' to node '{}'.", name, self.name());
+	pub fn update_prop(&mut self, name: &str, value: DeviceTreeProperty) -> Option<DeviceTreeProperty> {
+		debug!("Adding property {{ {} {} }} to node '{}'.", name, value, self.name());
 
 		self.properties.insert(name.to_string(), value)
 	}
@@ -128,10 +130,17 @@ impl DeviceTreeNode {
 		self.properties.remove_entry(name)
 	}
 
-    pub fn set_ascells(&mut self, addr_cells: u32, size_cells: u32) {
-        self.addresssizecells.set(addr_cells, size_cells);
+    pub fn set_numcells(&mut self, addr_cells: u32, size_cells: u32) {
+        self.num_cells.set(addr_cells, size_cells);
     }
 
+	pub fn set_addr_cells(&mut self, addr_cells: u32) {
+		self.num_cells.set_addr_cells(addr_cells);
+	}
+
+	pub fn set_size_cells(&mut self, size_cells: u32) {
+		self.num_cells.set_size_cells(size_cells);
+	}
 
 	/* Device-Tree specific actions */
 	/// create a new /cpu node
@@ -139,8 +148,8 @@ impl DeviceTreeNode {
 		let cpu_node = DeviceTreeNode::new_wrap();
 
 		// Required properties of a cpu node
-		cpu_node.borrow_mut().add_prop("device_type", DeviceTreeProperty::String("cpu".to_string()));
-        cpu_node.borrow_mut().add_prop("reg", DeviceTreeProperty::Pairs(Pairs(vec![(vec![reg], Vec::new())])));
+		cpu_node.borrow_mut().update_prop("device_type", DeviceTreeProperty::String("cpu".to_string()));
+        cpu_node.borrow_mut().update_prop("reg", DeviceTreeProperty::Pairs(Pairs(vec![(vec![reg], Vec::new())])));
 		// TODO: further properties required: clock-frequency, timebase-frequency
 
 		Rc::clone(&cpu_node)

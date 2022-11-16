@@ -8,6 +8,8 @@ use alloc::{
 };
 
 /// Pop the first n-bytes from input, and return it
+/// 
+/// Returns None and does not modify the slice if the given length is out of bounds.
 pub(crate) fn pop_slice<'a>(input: &mut &'a [u8], len: usize) -> Option<&'a [u8]> {
     input.take(..len)
 }
@@ -48,6 +50,18 @@ pub(crate) fn take_utf8_until_nul_aligned<'a>(input: &mut &'a [u8], align: usize
     } else {
         pop_slice(input, len)?;
     }
+
+    Some(str)
+}
+
+pub(crate) fn take_utf8_until_nul<'a>(input: &mut &'a [u8]) -> Option<&'a str> {
+    let c_str = CStr::from_bytes_until_nul(input).unwrap();
+
+    let str = c_str.to_str().unwrap();
+
+    let len = c_str.to_bytes_with_nul().len();
+
+    pop_slice(input, len)?;
 
     Some(str)
 }
