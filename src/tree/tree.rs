@@ -26,6 +26,8 @@ impl DeviceTree {
 	}
 
 	pub fn new(root: DeviceTreeNodeWrap) -> Self {
+		root.borrow_mut().set_name("/");
+
 		Self { root: Rc::clone(&root) }
 	}
 
@@ -107,5 +109,13 @@ impl DeviceTree {
 		net_node.borrow_mut().add_prop("local-mac-address", DeviceTreeProperty::Bytes(mac.to_vec()));
 
 		root.add_child("net", Rc::clone(&net_node));
+	}
+}
+
+impl core::fmt::Display for DeviceTree {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+		writeln!(f, "Device-Tree: ")?;
+
+		writeln!(f, "{}", self.root().borrow())
 	}
 }

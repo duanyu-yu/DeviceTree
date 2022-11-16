@@ -1,4 +1,8 @@
-use libc_print::std_name::println;
+use log::{
+    info,
+    debug,
+    error
+};
 
 use crate::{
     utils, 
@@ -13,7 +17,6 @@ const FDT_MAGIC: u32 = 0xd00dfeed;
 /// Note: The version is 17 if using the structure as defined in https://github.com/devicetree-org/devicetree-specification/releases/tag/v0.4-rc1
 const VERSION_NUMBER: u32 = 17;
 
-#[derive(Clone, Copy)]
 pub struct FdtHeader {
     /// The magic value, shall be 0xd00dfeed (big-endian).
 	magic: u32,
@@ -40,7 +43,7 @@ pub struct FdtHeader {
 
 impl FdtHeader {
     pub fn from_bytes(bytes: &mut &[u8]) -> Result<Self, DeviceTreeError> {
-        println!("[HEADER] Parsing FDT header from bytes.");
+        debug!("Parsing FDT header from bytes.");
 
         let header = Self {
             magic: utils::take_be_u32(bytes).unwrap(), 
@@ -59,11 +62,11 @@ impl FdtHeader {
 
         match check {
             Ok(_) => {
-                println!("[HEADER] Valid header!");
+                debug!("Valid header!");
                 return Ok(header);
             },
             Err(error) => {
-                println!("[HEADER] Invalid magic number and/or version!");
+                debug!("Invalid magic number and/or version!");
                 return Err(error);
             }
         }

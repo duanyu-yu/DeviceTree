@@ -2,9 +2,7 @@ use alloc::{
 	string::{String, ToString},
 	vec::Vec
 };
-use core::{
-	convert::From, fmt::write
-};
+use core::convert::From;
 
 use crate::utils;
 
@@ -27,14 +25,14 @@ impl core::fmt::Display for DeviceTreeProperty {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		match self {
 			Self::Empty => write!(f, ";"),
-			Self::StringList(v) => write!(f, "= {};", v.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<String>>().join(", ")),
-			Self::String(s) => write!(f, "= \"{}\";", s),
-			Self::U32(i) => write!(f, "= <0x{:x}>;", i),
-			Self::U64(i) => write!(f, "= <0x{:x}>;", i),
-			Self::Status(s) => write!(f, "= \"{}\";", s),
+			Self::StringList(v) => write!(f, "= {}", v.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<String>>().join(", ")),
+			Self::String(s) => write!(f, "= \"{}\"", s),
+			Self::U32(i) => write!(f, "= <0x{:x}>", i),
+			Self::U64(i) => write!(f, "= <0x{:x}>", i),
+			Self::Status(s) => write!(f, "= \"{}\"", s),
 			Self::Pairs(p) => Ok(()), // TODO: fmt for Pairs and Triplets
 			Self::Triplets(t) => Ok(()),
-			Self::Bytes(v) => write!(f, "= [ {} ];", v.iter().map(|i| format!("{:x}", i)).collect::<Vec<String>>().join(" "))
+			Self::Bytes(v) => write!(f, "= [{}]", v.iter().map(|i| format!("{:x}", i)).collect::<Vec<String>>().join(" "))
 		}
 	}
 }
@@ -52,6 +50,28 @@ impl DeviceTreeProperty {
 			DeviceTreeProperty::Triplets(v) => v.as_ref().unwrap().clone().into(),
 			DeviceTreeProperty::Bytes(v) => String::from_utf8(v.to_vec()).unwrap()
 		}
+	}
+}
+
+/* The #address-cells and #size-cells properties may be used in any device node that has children in the devicetree
+hierarchy and describes how child device nodes should be addressed. 
+The #address-cells property defines the number of <u32> cells used to encode the address field in a child node’s reg property. 
+The #size-cells property defines the number of <u32> cells used to encode the size field in a child node’s reg property. */
+#[derive(Clone, Copy, Default, PartialEq, Debug)]
+pub struct AddressSizeCells {
+	address_cells: u32,
+	size_cells: u32
+}
+
+impl AddressSizeCells {
+	pub fn new() -> Self {
+		// Default value of #address-cells and #size-cells
+		AddressSizeCells { address_cells: 2, size_cells: 1 } 
+	}
+
+	pub fn set(&mut self, address_cells: u32, size_cells: u32) {
+		self.address_cells = address_cells;
+		self.size_cells = size_cells;
 	}
 }
 

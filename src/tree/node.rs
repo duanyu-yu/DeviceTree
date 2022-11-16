@@ -2,63 +2,27 @@ use alloc::{
 	string::{String, ToString},
 	vec::Vec,
 	rc::Rc,
-	collections::BTreeMap
+	collections::{
+		BTreeMap,
+		btree_map::Iter
+	}
 };
-use core::{
-	cell::RefCell,
+use core::cell::RefCell;
+use log::{
+    info,
+    debug,
+    error
 };
-use libc_print::std_name::println;
 
 use super::prop::{
 	DeviceTreeProperty,
+	AddressSizeCells,
 	Pairs
 };
 
-/* The #address-cells and #size-cells properties may be used in any device node that has children in the devicetree
-hierarchy and describes how child device nodes should be addressed. 
-The #address-cells property defines the number of <u32> cells used to encode the address field in a child node’s reg property. 
-The #size-cells property defines the number of <u32> cells used to encode the size field in a child node’s reg property. */
-#[derive(Clone, Copy, Default, PartialEq, Debug)]
-pub struct AddressSizeCells {
-	address_cells: u32,
-	size_cells: u32
-}
+const INDENT_SIZE: usize = 4;
 
-impl AddressSizeCells {
-	pub fn new() -> Self {
-		// Default value of #address-cells and #size-cells
-		AddressSizeCells { address_cells: 2, size_cells: 1 } 
-	}
-
-	pub fn set(&mut self, address_cells: u32, size_cells: u32) {
-		self.address_cells = address_cells;
-		self.size_cells = size_cells;
-	}
-}
-
-/* Type aliases */
-/// DeviceTreeNode wrapped in Rc<RefCell<DeviceTreeNode>> to have shared references
-pub type DeviceTreeNodeWrap = Rc<RefCell<DeviceTreeNode>>;
-
-pub trait AddChild {
-	fn add_child(&self, name: &str, child: DeviceTreeNodeWrap) -> Option<DeviceTreeNodeWrap>;
-}
-
-impl AddChild for DeviceTreeNodeWrap {
-	/// Add child to the current node
-	/// 
-	/// If the current node did not have the child present, None is returned.
-	/// 
-	/// If the current node did have the child present, the child is updated, and the old child is returned.
-	fn add_child(&self, name: &str, child: DeviceTreeNodeWrap) -> Option<DeviceTreeNodeWrap> {
-		println!("[NODE] Adding subnode '{}' to node '{}'.", name, self.borrow().name());
-
-		child.borrow_mut().set_name(name);
-		child.borrow_mut().set_parent(Rc::clone(&self));
-
-		self.borrow_mut().children.insert(name.to_string(), Rc::clone(&child))
-	}
-}
+static mut INDENT: usize = 0;
 
 /// Node of devicetree 
 #[derive(Clone, Default, PartialEq, Debug)]
@@ -118,6 +82,10 @@ impl DeviceTreeNode {
 		self.parent.is_some()
 	}
 
+	pub fn children_iter(&self) -> Iter<'_, String, DeviceTreeNodeWrap> {
+		self.children.iter()
+	}
+
 	pub fn find_child(&self, name: &str) -> Option<&DeviceTreeNodeWrap> { 
 		self.children.get(name)
 	}
@@ -134,6 +102,10 @@ impl DeviceTreeNode {
 		self.properties.get(name)
 	}
 
+	pub fn prop_iter(&self) -> Iter<'_, String, DeviceTreeProperty> {
+		self.properties.iter()
+	}
+
 	pub fn prop_exists(&self, name: &str) -> bool {
 		self.properties.contains_key(name)
 	}
@@ -144,7 +116,7 @@ impl DeviceTreeNode {
 	/// 
 	/// If the map did have this key present, the value is updated, and the old value is returned.
 	pub fn add_prop(&mut self, name: &str, value: DeviceTreeProperty) -> Option<DeviceTreeProperty> {
-		println!("[NODE] Adding property '{}' to node '{}'.", name, self.name());
+		debug!("Adding property '{}' to node '{}'.", name, self.name());
 
 		self.properties.insert(name.to_string(), value)
 	}
@@ -172,5 +144,52 @@ impl DeviceTreeNode {
 		// TODO: further properties required: clock-frequency, timebase-frequency
 
 		Rc::clone(&cpu_node)
+	}
+}
+
+impl core::fmt::Display for DeviceTreeNode {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+		unsafe {
+			writeln!(f, "")?;
+			
+			writeln!(f, "{:indent$}{} {{", "", self.name(), indent = INDENT)?;
+
+			INDENT += INDENT_SIZE;
+
+			for (prop_name, prop_value) in self.prop_iter() {
+				writeln!(f, "{:indent$}{} {};", "", prop_name, prop_value, indent = INDENT)?;
+			} 
+
+			for (_, child) in self.children_iter() {
+				writeln!(f, "{}", child.borrow())?;
+			}
+
+			INDENT -= INDENT_SIZE;
+
+			write!(f, "{:indent$}}};", "", indent = INDENT)
+		}
+	}
+}
+
+/// DeviceTreeNode wrapped in Rc<RefCell<DeviceTreeNode>> to have shared references
+pub type DeviceTreeNodeWrap = Rc<RefCell<DeviceTreeNode>>;
+
+pub trait AddChild {
+	fn add_child(&self, name: &str, child: DeviceTreeNodeWrap) -> Option<DeviceTreeNodeWrap>;
+}
+
+impl AddChild for DeviceTreeNodeWrap {
+	/// Add child to the current node
+	/// 
+	/// If the current node did not have the child present, None is returned.
+	/// 
+	/// If the current node did have the child present, the child is updated, and the old child is returned.
+	fn add_child(&self, name: &str, child: DeviceTreeNodeWrap) -> Option<DeviceTreeNodeWrap> {
+		debug!("Adding subnode '{}' to node '{}'.", name, self.borrow().name());
+
+		child.borrow_mut().set_name(name);
+		child.borrow_mut().set_parent(Rc::clone(&self));
+
+		self.borrow_mut().children.insert(name.to_string(), Rc::clone(&child))
 	}
 }
