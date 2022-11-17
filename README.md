@@ -1,5 +1,7 @@
 # DeviceTree
 
+![Crates.io](https://img.shields.io/crates/v/devicetree)
+
 The crate **devicetree** can be used for parsing Devicetree Blob (DTB), based on [Devicetree Specification](https://www.devicetree.org/specifications/).
 
 The crate **devicetree** is a `#![no_std]` crate written in Rust. 
