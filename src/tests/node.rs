@@ -45,10 +45,10 @@ fn add_child() {
 fn add_prop() {
 	let mut node = DeviceTreeNode::new();
 
-	assert_eq!(node.update_prop("name", DeviceTreeProperty::String("old".to_string())), None);
+	assert_eq!(node.add_prop("name", DeviceTreeProperty::String("old".to_string())), None);
 	assert_eq!(node.prop_exists("name"), true);
 
-	assert_eq!(node.update_prop("name", DeviceTreeProperty::String("new".to_string())), Some(DeviceTreeProperty::String("old".to_string())));
+	assert_eq!(node.add_prop("name", DeviceTreeProperty::String("new".to_string())), Some(DeviceTreeProperty::String("old".to_string())));
 
 	assert_eq!(node.prop_value("name"), Some(&DeviceTreeProperty::String("new".to_string())));
 }
@@ -57,7 +57,7 @@ fn add_prop() {
 fn delete_prop() {
 	let mut node = DeviceTreeNode::new();
 
-	node.update_prop("name", DeviceTreeProperty::Empty);
+	node.add_prop("name", DeviceTreeProperty::Empty);
 
 	assert_eq!(node.prop_exists("name"), true);
 

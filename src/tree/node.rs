@@ -27,7 +27,7 @@ const INDENT_SIZE: usize = 4;
 static mut INDENT: usize = 0;
 
 /// Node of devicetree 
-#[derive(Clone, Default, PartialEq, Debug)]
+#[derive(Default, PartialEq, Debug)]
 pub struct DeviceTreeNode {
 	name: String,
 	parent: Option<DeviceTreeNodeWrap>,
@@ -117,10 +117,12 @@ impl DeviceTreeNode {
 	/// If the map did not have this key present, None is returned. 
 	/// 
 	/// If the map did have this key present, the value is updated, and the old value is returned.
-	pub fn update_prop(&mut self, name: &str, value: DeviceTreeProperty) -> Option<DeviceTreeProperty> {
-		debug!("Adding property {{ {} {} }} to node '{}'.", name, value, self.name());
+	pub fn add_prop(&mut self, mut prop: DeviceTreeProperty) -> Option<DeviceTreeProperty> {
+		prop.update_type();
 
-		self.properties.insert(name.to_string(), value)
+		debug!("Adding property {{ {} {} }} to node '{}'.", prop.name(), prop, self.name());
+
+		self.properties.insert(prop.name().to_string(), prop)
 	}
 
 	/// Removes a property from the property-map: 
@@ -141,19 +143,6 @@ impl DeviceTreeNode {
 	pub fn set_size_cells(&mut self, size_cells: u32) {
 		self.num_cells.set_size_cells(size_cells);
 	}
-
-	/* Device-Tree specific actions */
-	/// create a new /cpu node
-	pub fn new_cpu(reg: u32) -> DeviceTreeNodeWrap {
-		let cpu_node = DeviceTreeNode::new_wrap();
-
-		// Required properties of a cpu node
-		cpu_node.borrow_mut().update_prop("device_type", DeviceTreeProperty::String("cpu".to_string()));
-        cpu_node.borrow_mut().update_prop("reg", DeviceTreeProperty::Pairs(Pairs(vec![(vec![reg], Vec::new())])));
-		// TODO: further properties required: clock-frequency, timebase-frequency
-
-		Rc::clone(&cpu_node)
-	}
 }
 
 impl core::fmt::Display for DeviceTreeNode {
@@ -165,8 +154,8 @@ impl core::fmt::Display for DeviceTreeNode {
 
 			INDENT += INDENT_SIZE;
 
-			for (prop_name, prop_value) in self.prop_iter() {
-				writeln!(f, "{:indent$}{} {};", "", prop_name, prop_value, indent = INDENT)?;
+			for (_, prop) in self.prop_iter() {
+				writeln!(f, "{:indent$}{};", "", prop, indent = INDENT)?;
 			} 
 
 			for (_, child) in self.children_iter() {

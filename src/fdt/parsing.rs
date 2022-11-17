@@ -1,7 +1,7 @@
 use core::ffi::CStr;
 use alloc::{
     rc::Rc,
-    vec::Vec
+    vec::Vec,
 };
 use log::{
     info,
@@ -20,10 +20,7 @@ use crate::{
             DeviceTreeNode, 
             AddChild
         }, 
-        prop::{
-            DeviceTreeProperty,
-            DeviceTreePropertyType
-        }
+        prop::DeviceTreeProperty,
     }
 };
 use super::blob::{
@@ -164,14 +161,9 @@ impl<'a> FdtStructBlock<'a> {
 
                     let mut raw_value = utils::take_aligned(&mut bytes, prop_describe.len(), 4).unwrap();
         
-                    let value = prop_parse(name, &mut raw_value);
-                        
-                    match value {
-                        Ok(v) => {
-                            current.borrow_mut().update_prop(name, v);
-                        }
-                        Err(e) => return Err(e)
-                    }
+                    let prop = DeviceTreeProperty::from_bytes(name, &mut raw_value);
+
+                    current.borrow_mut().add_prop(prop);
                 }
                 Token::TokenEndNode => {
                     debug!("End of node '{}'.", current.borrow().name());
@@ -258,25 +250,4 @@ impl core::fmt::Display for Token {
             Self::TokenEnd => write!(f, "TOKEN_END"),
         }
     }
-}
-
-pub fn prop_parse(name: &str, bytes: &mut &[u8]) -> Result<DeviceTreeProperty, DeviceTreeError> {
-	let value_type = match name {
-		"#address-cells" => DeviceTreePropertyType::U32,
-		"#size-cells" => DeviceTreePropertyType::U32,
-        "#interrupt-cells" => DeviceTreePropertyType::U32,
-		"compatible" => DeviceTreePropertyType::StringList,
-		"model" => DeviceTreePropertyType::String,
-        "phandle" => DeviceTreePropertyType::U32,
-        "status" => DeviceTreePropertyType::String,
-        "virtual-reg" => DeviceTreePropertyType::U32,
-        "dma-coherent" => DeviceTreePropertyType::Empty,
-        "name" => DeviceTreePropertyType::String,
-        "device_type" => DeviceTreePropertyType::String,
-        "timebase-frequency" => DeviceTreePropertyType::U32,
-        "clock-frequency" => DeviceTreePropertyType::U32,
-		_ => DeviceTreePropertyType::Bytes
-	};
-
-    DeviceTreeProperty::from_bytes(bytes, value_type)
 }
