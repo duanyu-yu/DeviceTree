@@ -5,7 +5,7 @@ The crate **device-tree** can be used for parsing Devicetree Blob (DTB).
 **Device-tree** is a `#![no_std]` crate written in Rust. 
 
 ## Example
-```
+```Rust
 use device_tree::DeviceTreeBlob;
 
 fn main() {
