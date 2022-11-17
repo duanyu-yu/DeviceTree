@@ -1,12 +1,12 @@
-# device-tree
+# DeviceTree
 
-The crate **device-tree** can be used for parsing Devicetree Blob (DTB), based on [Devicetree Specification](https://www.devicetree.org/specifications/).
+The crate **devicetree** can be used for parsing Devicetree Blob (DTB), based on [Devicetree Specification](https://www.devicetree.org/specifications/).
 
-The crate **device-tree** is a `#![no_std]` crate written in Rust. 
+The crate **devicetree** is a `#![no_std]` crate written in Rust. 
 
 ## Example
 ```Rust
-use device_tree::DeviceTreeBlob;
+use devicetree::DeviceTreeBlob;
 
 fn main() {
     let mut dtb: &[u8] = include_bytes!("<path-to-*.dtb>");
@@ -18,7 +18,7 @@ fn main() {
 ```
 
 ## Debug
-**device-tree** uses Log Messages to log info, debug, or error messages to the console. More about Log Messages can be found [here](https://rust-lang-nursery.github.io/rust-cookbook/development_tools/debugging/log.html#log-messages).
+**devicetree** uses Log Messages to log info, debug, or error messages to the console. More about Log Messages can be found [here](https://rust-lang-nursery.github.io/rust-cookbook/development_tools/debugging/log.html#log-messages).
 
 Set the `RUST_LOG` environment variable to print debug messages:
 ```shell
