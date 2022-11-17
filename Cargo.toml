@@ -1,15 +1,16 @@
 [package]
-name = "device-tree"
+name = "devicetree"
 version = "0.1.0"
 edition = "2021"
 authors = ["Yu Duan <yu_duan@yahoo.com>"]
 readme = "README.md"
-repository = "https://github.com/duanyu-yu/device-tree"
+repository = "https://github.com/duanyu-yu/DeviceTree"
 license = "Apache-2.0"
 description = "Devicetree parsing tool"
 keywords = ["devicetree", "dtb", "fdt"]
 exclude = [
-    "tests/*"
+    "tests/*",
+    "./gitignore"
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
