@@ -3,8 +3,6 @@ use core::convert::From;
 
 use crate::tree::prop::{
 	DeviceTreeProperty, 
-	Pairs, 
-	Triplets
 };
 
 #[test]
@@ -23,7 +21,7 @@ fn prop_value() {
 	let u32 = DeviceTreeProperty::U32(16_u32);
 
 	assert_eq!(u32.to_stringfmt(), String::from("0x10"));
-	
+  
 
 	let reg_value = Pairs(vec![(vec![222_u32, 1_u32], vec![16_u32, 204_u32]), (vec![256_u32], vec![172_u32])]);
 	let reg = DeviceTreeProperty::Pairs(reg_value);
