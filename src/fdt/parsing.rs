@@ -38,6 +38,14 @@ const FDT_PROP: u32 = 0x00000003;
 const FDT_NOP: u32 = 0x00000004;
 const FDT_END: u32 = 0x00000009;
 
+impl DeviceTree {
+    pub fn from_bytes(bytes: &mut &[u8]) -> Result<Self, DeviceTreeError> {
+        let mut dtb = DeviceTreeBlob::from_bytes(bytes)?;
+
+        dtb.to_tree()
+    }
+}
+
 impl<'a> DeviceTreeBlob<'a> {
     pub fn from_bytes(bytes: &mut &'a [u8]) -> Result<Self, DeviceTreeError> {
         info!("Device-Tree-Blob located at {:#x}", bytes as *const _ as usize);

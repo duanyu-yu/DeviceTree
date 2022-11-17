@@ -9,26 +9,6 @@ use crate::{
 };
 
 #[test]
-fn cpus() {
-	let mut tree = DeviceTree::init().expect("Failed by init device-tree!");
-
-	assert!(tree.add_cpus(4).is_ok());
-
-	let root = tree.root();
-
-	let current = Rc::clone(root);
-
-	let tmp = current.borrow();
-
-	let cpus = tmp.find_child("cpus").unwrap();
-
-	assert!(cpus.borrow().child_exists("cpu@0"));
-	assert!(cpus.borrow().child_exists("cpu@1"));
-	assert!(cpus.borrow().child_exists("cpu@2"));
-	assert!(cpus.borrow().child_exists("cpu@3"));
-}
-
-#[test]
 fn tree() {
 	let tree = DeviceTree::new_empty_root();
 
@@ -49,4 +29,13 @@ fn tree() {
 	current.add_child("cpu@0", Rc::clone(&cpu_0));
 
 	assert_eq!(tree.num_cpus(), 1);
+}
+
+#[test]
+fn from_bytes() {
+	let mut dtb: &[u8] = include_bytes!("./dtb/test1.dtb");
+
+    let tree = DeviceTree::from_bytes(&mut dtb).unwrap();
+
+    assert_eq!(tree.num_cpus(), 4);
 }
