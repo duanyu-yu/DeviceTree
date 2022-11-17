@@ -1,9 +1,13 @@
 use core::ffi::CStr;
 use alloc::{
     rc::Rc,
-    vec::Vec
+    vec::Vec,
 };
-use libc_print::std_name::println;
+use log::{
+    info,
+    debug,
+    error
+};
 
 use super::header::FdtHeader;
 use crate::{
@@ -16,7 +20,7 @@ use crate::{
             DeviceTreeNode, 
             AddChild
         }, 
-        prop::DeviceTreeProperty
+        prop::DeviceTreeProperty,
     }
 };
 use super::blob::{
@@ -36,7 +40,7 @@ const FDT_END: u32 = 0x00000009;
 
 impl<'a> DeviceTreeBlob<'a> {
     pub fn from_bytes(bytes: &mut &'a [u8]) -> Result<Self, DeviceTreeError> {
-        println!("[BLOB] Device-Tree-Blob located at {:#x}", bytes as *const _ as usize);
+        info!("Device-Tree-Blob located at {:#x}", bytes as *const _ as usize);
 
         let header = FdtHeader::from_bytes(bytes)?;
 
@@ -44,10 +48,10 @@ impl<'a> DeviceTreeBlob<'a> {
 
         while let Some(entry) = FdtReserveEntry::from_bytes(bytes) {
             if !entry.end_of_list() {
-                println!("[BLOB] Adding reserved memory entry.");
+                debug!("Adding reserved memory entry.");
                 memory_reservation_vec.push(entry);
             } else {
-                println!("[BLOB] End of adding reserved memory entry.");
+                debug!("End of adding reserved memory entry.");
                 break;
             }
         }
@@ -124,7 +128,7 @@ impl<'a> FdtStructBlock<'a> {
     }
 
     pub fn parsing(&mut self, strings_block: &FdtStringsBlock) -> Result<DeviceTree, DeviceTreeError> {
-        println!("[BLOB] Converting dtb to tree structure.");
+        debug!("Converting dtb to tree structure.");
 
         let mut current = DeviceTreeNode::new_wrap();
 
@@ -139,8 +143,8 @@ impl<'a> FdtStructBlock<'a> {
                 Token::TokenBeginNode => { 
                     let name = utils::take_utf8_until_nul_aligned(&mut bytes, 4).unwrap();
     
-                    if name == "" {
-                        println!("[BLOB] Adding root node.");
+                    if name.is_empty() {
+                        debug!("Adding root node.");
                         continue;
                     }
     
@@ -154,13 +158,15 @@ impl<'a> FdtStructBlock<'a> {
                     let prop_describe = FdtPropDescribe::from_bytes(&mut bytes).unwrap();
         
                     let name = strings_block.find(prop_describe.name_off()).unwrap();
+
+                    let mut raw_value = utils::take_aligned(&mut bytes, prop_describe.len(), 4).unwrap();
         
-                    let value = utils::take_aligned(&mut bytes, prop_describe.len(), 4).unwrap();
-                
-                    current.borrow_mut().add_prop(name, DeviceTreeProperty::Bytes(value.to_vec()));
+                    let prop = DeviceTreeProperty::from_bytes(name, &mut raw_value);
+
+                    current.borrow_mut().add_prop(prop);
                 }
                 Token::TokenEndNode => {
-                    println!("[BLOB] End of node '{}'.", current.borrow().name());
+                    debug!("End of node '{}'.", current.borrow().name());
 
                     if !current.borrow().has_parent() {
                         break;
@@ -177,8 +183,7 @@ impl<'a> FdtStructBlock<'a> {
             }
         }
 
-        println!("[BLOB] End of parsing.");
-        println!("");
+        debug!("End of parsing.");
 
         Ok(DeviceTree::new(current))
     }

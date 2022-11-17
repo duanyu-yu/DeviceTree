@@ -1,90 +1,164 @@
 use alloc::{
-	string::{String, ToString},
+	string::{
+		String, 
+		ToString
+	},
 	vec::Vec
 };
-use core::{
-	convert::From, fmt::write
-};
+use core::convert::From;
 
-use crate::utils;
+use crate::{
+	utils, 
+	DeviceTreeError
+};
 
 /* Property of devicetree: 
 Each node in the devicetree has properties that describe the characteristics of the node. */
-#[derive(Clone, PartialEq, Debug)]
-pub enum DeviceTreeProperty {
-	Empty,
-	StringList(Vec<String>), // Specifies a list of platform architectures with which this platform is compatible. This property can be used by operating systems in selecting platform specific code. The recommended form of the property value is: "manufacturer,model"
-	String(String), // Specifies a string that uniquely identifies the model of the system board. The recommended format is “manufacturer,model-number”.
-	U32(u32),
-	U64(u64),
-	Status(StatusValue),
-	Pairs(Pairs),
-	Triplets(Option<Triplets>),
-	Bytes(Vec<u8>)
+#[derive(PartialEq, Debug)]
+pub struct  DeviceTreeProperty {
+	name: String,
+	raw_value: Vec<u8>,
+	value_type: DeviceTreePropertyType
 }
 
 impl core::fmt::Display for DeviceTreeProperty {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		match self {
-			Self::Empty => write!(f, ";"),
-			Self::StringList(v) => write!(f, "= {};", v.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<String>>().join(", ")),
-			Self::String(s) => write!(f, "= \"{}\";", s),
-			Self::U32(i) => write!(f, "= <0x{:x}>;", i),
-			Self::U64(i) => write!(f, "= <0x{:x}>;", i),
-			Self::Status(s) => write!(f, "= \"{}\";", s),
-			Self::Pairs(p) => Ok(()), // TODO: fmt for Pairs and Triplets
-			Self::Triplets(t) => Ok(()),
-			Self::Bytes(v) => write!(f, "= [ {} ];", v.iter().map(|i| format!("{:x}", i)).collect::<Vec<String>>().join(" "))
+		match self.value_type {
+			DeviceTreePropertyType::Empty => write!(f, "{};", self.name),
+			DeviceTreePropertyType::String => write!(f, "{} = \"{}\"", self.name, String::from_utf8(self.raw_value.to_vec()).unwrap()),
+			DeviceTreePropertyType::StringList => write!(f, "{} = \"{}\"", self.name, String::from_utf8(self.raw_value.to_vec()).unwrap()),
+			DeviceTreePropertyType::U32 => write!(f, "{} = <{:#x}>", self.name, utils::read_first_be_u32(&mut self.raw_value.as_slice()).unwrap()),
+			DeviceTreePropertyType::U64 => write!(f, "{} = <{:#x}>", self.name, utils::read_first_be_u64(&mut self.raw_value.as_slice()).unwrap()),
+			DeviceTreePropertyType::Bytes => write!(f, "{} = [{}]", self.name, self.raw_value.iter().map(|i| format!("{:02x}", i)).collect::<Vec<String>>().join(" ")),
+			DeviceTreePropertyType::Raw => write!(f, "{} = (raw) [{}]", self.name, self.raw_value.iter().map(|i| format!("{:x}", i)).collect::<Vec<String>>().join(" "))
 		}
 	}
 }
 
 impl DeviceTreeProperty {
-	pub fn to_stringfmt(&self) -> String { 
-		match self {
-			DeviceTreeProperty::Empty => String::new(),
-			DeviceTreeProperty::StringList(v) => utils::vec_strings_fmt(v),  
-			DeviceTreeProperty::String(v) => v.to_string(),
-			DeviceTreeProperty::U32(v) => format!("0x{:X}", v),
-			DeviceTreeProperty::U64(v) => format!("0x{:X}", v),
-			DeviceTreeProperty::Status(v) => v.to_string(),
-			DeviceTreeProperty::Pairs(v) => v.clone().into(),
-			DeviceTreeProperty::Triplets(v) => v.as_ref().unwrap().clone().into(),
-			DeviceTreeProperty::Bytes(v) => String::from_utf8(v.to_vec()).unwrap()
+	pub fn from_bytes(name: &str, bytes: &[u8]) -> Self {
+		Self { 
+			name: name.to_string(), 
+			raw_value: bytes.to_vec(), 
+			value_type: DeviceTreePropertyType::Raw 
 		}
+	}
+
+	pub fn name(&self) -> &str {
+		&self.name
+	}
+
+	pub fn update_type(&mut self) {
+		self.value_type = match self.name.as_str() {
+			"#address-cells" => DeviceTreePropertyType::U32,
+			"#size-cells" => DeviceTreePropertyType::U32,
+			"#interrupt-cells" => DeviceTreePropertyType::U32,
+			"compatible" => DeviceTreePropertyType::StringList,
+			"model" => DeviceTreePropertyType::String,
+			"phandle" => DeviceTreePropertyType::U32,
+			"status" => DeviceTreePropertyType::String,
+			"virtual-reg" => DeviceTreePropertyType::U32,
+			"dma-coherent" => DeviceTreePropertyType::Empty,
+			"name" => DeviceTreePropertyType::String,
+			"device_type" => DeviceTreePropertyType::String,
+			"timebase-frequency" => DeviceTreePropertyType::U32,
+			"clock-frequency" => DeviceTreePropertyType::U32,
+			"local-mac-address" => DeviceTreePropertyType::Bytes,
+			_ => DeviceTreePropertyType::Raw
+		};
+	}
+
+	pub fn u32(&self) -> Result<u32, DeviceTreeError> {
+		if self.value_type != DeviceTreePropertyType::U32 {
+			return Err(DeviceTreeError::BadPropType);
+		}
+
+		Ok(utils::read_first_be_u32(&mut self.raw_value.as_slice()).unwrap())
+	}
+
+    pub fn u64(&self) -> Result<u64, DeviceTreeError> {
+		if self.value_type != DeviceTreePropertyType::U64 {
+			return Err(DeviceTreeError::BadPropType);
+		}
+
+		Ok(utils::read_first_be_u64(&mut self.raw_value.as_slice()).unwrap())
+	}
+
+    pub fn string(&self) -> Result<String, DeviceTreeError> {
+		if self.value_type != DeviceTreePropertyType::String {
+			return Err(DeviceTreeError::BadPropType);
+		}
+
+		Ok(String::from_utf8(self.raw_value.to_vec()).unwrap())
+	}
+
+    pub fn stringlist(&self) -> Result<Vec<String>, DeviceTreeError> {
+		if self.value_type != DeviceTreePropertyType::StringList {
+			return Err(DeviceTreeError::BadPropType);
+		}
+
+		let mut vec_string: Vec<String> = Vec::new();
+
+		loop {
+			let s = utils::take_utf8_until_nul(&mut self.raw_value.as_slice().clone()).unwrap();
+
+			if s.is_empty() {
+				break;
+			}
+
+			vec_string.push(s.to_string());
+		}
+
+		Ok(vec_string)
+	}
+
+    pub fn bytes(&self) -> Result<Vec<u8>, DeviceTreeError> {
+		if self.value_type != DeviceTreePropertyType::StringList {
+			return Err(DeviceTreeError::BadPropType);
+		}
+
+		Ok(self.raw_value.clone())
 	}
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub enum StatusValue {
-	Okay,
-	Disabled,
-	Reserved,
-	Fail,
-	FailSss,
+#[derive(PartialEq, Debug)]
+pub enum DeviceTreePropertyType {
+	Empty,
+	StringList,
+	String, 
+	U32,
+	U64,
+	Bytes,
+	Raw
 }
 
-impl core::fmt::Display for StatusValue {
-	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		match self {
-			Self::Okay => write!(f, "okay"),
-			Self::Disabled => write!(f, "disabled"),
-			Self::Reserved => write!(f, "reserved"),
-			Self::Fail => write!(f, "fail"),
-			Self::FailSss => write!(f, "fail-sss")
-		}
+/* The #address-cells and #size-cells properties may be used in any device node that has children in the devicetree
+hierarchy and describes how child device nodes should be addressed. 
+The #address-cells property defines the number of <u32> cells used to encode the address field in a child node’s reg property. 
+The #size-cells property defines the number of <u32> cells used to encode the size field in a child node’s reg property. */
+#[derive(Clone, Copy, Default, PartialEq, Debug)]
+pub struct NumCells {
+	address_cells: u32,
+	size_cells: u32
+}
+
+impl NumCells {
+	pub fn new() -> Self {
+		// Default value of #address-cells and #size-cells
+		NumCells { address_cells: 2, size_cells: 1 } 
 	}
-}
 
-impl StatusValue {
-	pub fn to_string(&self) -> String {
-		match self {
-			StatusValue::Okay => String::from("okay"),
-			StatusValue::Disabled => String::from("disabled"),
-			StatusValue::Reserved => String::from("reserved"),
-			StatusValue::Fail => String::from("fail"),
-			StatusValue::FailSss => String::from("fail-sss")
-		}
+	pub fn set(&mut self, address_cells: u32, size_cells: u32) {
+		self.address_cells = address_cells;
+		self.size_cells = size_cells;
+	}
+
+	pub fn set_addr_cells(&mut self, addr_cells: u32) {
+		self.address_cells = addr_cells;
+	}
+
+	pub fn set_size_cells(&mut self, size_cells: u32) {
+		self.size_cells = size_cells;
 	}
 }
 

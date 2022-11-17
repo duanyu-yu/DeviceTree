@@ -50,7 +50,8 @@ fn add_prop() {
 
 	assert_eq!(node.add_prop("name", DeviceTreeProperty::String("new".to_string())), Some(DeviceTreeProperty::String("old".to_string())));
 
-	assert_eq!(node.prop("name"), Some(&DeviceTreeProperty::String("new".to_string())));
+
+	assert_eq!(node.prop_value("name"), Some(&DeviceTreeProperty::String("new".to_string())));
 }
 
 #[test]
