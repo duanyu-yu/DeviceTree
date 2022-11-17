@@ -24,7 +24,7 @@ pub struct  DeviceTreeProperty {
 impl core::fmt::Display for DeviceTreeProperty {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		match self.value_type {
-			DeviceTreePropertyType::Empty => write!(f, "{};", self.name),
+			DeviceTreePropertyType::Empty => write!(f, "{}", self.name),
 			DeviceTreePropertyType::String => write!(f, "{} = \"{}\"", self.name, String::from_utf8(self.raw_value.to_vec()).unwrap()),
 			DeviceTreePropertyType::StringList => write!(f, "{} = \"{}\"", self.name, String::from_utf8(self.raw_value.to_vec()).unwrap()),
 			DeviceTreePropertyType::U32 => write!(f, "{} = <{:#x}>", self.name, utils::read_first_be_u32(&mut self.raw_value.as_slice()).unwrap()),
@@ -46,6 +46,10 @@ impl DeviceTreeProperty {
 
 	pub fn name(&self) -> &str {
 		&self.name
+	}
+
+	pub fn set_type(&mut self, value_type: DeviceTreePropertyType) {
+		self.value_type = value_type;
 	}
 
 	pub fn update_type(&mut self) {

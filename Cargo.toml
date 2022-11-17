@@ -9,4 +9,3 @@ edition = "2021"
 core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 log = "0.4"
-libc-print = "0.1.20"

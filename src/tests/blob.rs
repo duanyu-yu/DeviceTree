@@ -4,7 +4,7 @@ use crate::{
 };
 
 #[test]
-fn devicetreeblob() {
+fn dtb() {
     let mut dtb: &[u8] = include_bytes!("./dtb/test1.dtb");
 
     let blob = DeviceTreeBlob::from_bytes(&mut dtb);
