@@ -8,7 +8,7 @@ The crate **devicetree** is a `#![no_std]` crate written in Rust.
 
 ## Example
 ```Rust
-use devicetree::DeviceTreeBlob;
+use devicetree::DeviceTree;
 
 fn main() {
     let mut dtb: &[u8] = include_bytes!("<path-to-*.dtb>");
