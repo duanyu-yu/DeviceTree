@@ -26,3 +26,7 @@ Set the `RUST_LOG` environment variable to print debug messages:
 ```shell
 RUST_LOG=debug cargo run
 ```
+## TODO
+- [ ] convert property value corresponds property type
+- [ ] dtb writer
+- [ ] dynamic management of devicetree
