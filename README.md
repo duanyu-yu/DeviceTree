@@ -1,6 +1,6 @@
 # DeviceTree
 
-![Crates.io](https://img.shields.io/crates/v/devicetree)
+[![Crates.io](https://img.shields.io/crates/v/devicetree)](https://crates.io/crates/devicetree)
 
 The crate **devicetree** can be used for parsing Devicetree Blob (DTB), based on [Devicetree Specification](https://www.devicetree.org/specifications/).
 
