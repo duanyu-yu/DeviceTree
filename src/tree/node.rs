@@ -1,25 +1,17 @@
 use alloc::{
 	string::{String, ToString},
-	vec::Vec,
 	rc::Rc,
 	collections::{
 		BTreeMap,
-		btree_map::Iter
-	}
+		btree_map::Iter,
+	},
 };
 use core::cell::RefCell;
-use log::{
-    info,
-    debug,
-    error
-};
-
-use crate::{DeviceTreeError, utils};
+use log::debug;
 
 use super::prop::{
 	DeviceTreeProperty,
 	NumCells,
-	Pairs
 };
 
 const INDENT_SIZE: usize = 4;

@@ -6,7 +6,6 @@ use alloc::{
 use log::{
     info,
     debug,
-    error
 };
 
 use super::header::FdtHeader;
@@ -67,11 +66,17 @@ impl<'a> DeviceTreeBlob<'a> {
         let structure_block_size = header.size_dt_struct();
         let string_block_size = header.size_dt_strings();
 
+        let struct_buf = &bytes[..structure_block_size];
+        *bytes = &bytes[structure_block_size..];
+
+        let string_buf = &bytes[..string_block_size];
+        *bytes = &bytes[string_block_size..];
+
         Ok( Self {
             header: header,
             memory_reservation_block: memory_reservation_vec,
-            structure_block: FdtStructBlock::from_bytes(bytes.take(..structure_block_size).unwrap()),
-            strings_block: FdtStringsBlock::from_bytes(bytes.take(..string_block_size).unwrap()) 
+            structure_block: FdtStructBlock::from_bytes(struct_buf),
+            strings_block: FdtStringsBlock::from_bytes(string_buf), 
         })
     }
 

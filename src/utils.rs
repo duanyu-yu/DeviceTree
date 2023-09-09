@@ -11,7 +11,13 @@ use alloc::{
 /// 
 /// Returns None and does not modify the slice if the given length is out of bounds.
 pub(crate) fn pop_slice<'a>(input: &mut &'a [u8], len: usize) -> Option<&'a [u8]> {
-    input.take(..len)
+    if len < input.len() {
+        let out = Some(&input[..len]);
+        *input = &input[len..];
+        out
+    } else {
+        None
+    }
 }
 
 /// Read from a slice as a u32 in big endian
@@ -73,12 +79,12 @@ pub(crate) fn take_aligned<'a>(input: &mut &'a [u8], len: usize, align: usize) -
 /// A function that compares two enums by their variant
 /// 
 /// Returns true if both enums are same variant
-pub(crate) fn variant_eq<T>(a: &T, b: &T) -> bool {
+pub fn variant_eq<T>(a: &T, b: &T) -> bool {
 	discriminant(a) == discriminant(b)
 }
 
 /// A function that print vector of strings in the form '<String1>', '<String2>'
-pub(crate) fn vec_strings_fmt(v: &Vec<String>) -> String {
+pub fn vec_strings_fmt(v: &Vec<String>) -> String {
 	let v_fmt: Vec<String> = v.iter().map(|i| format!("'{}'", i)).collect();
 
 	v_fmt.join(", ")
