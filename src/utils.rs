@@ -11,7 +11,13 @@ use alloc::{
 /// 
 /// Returns None and does not modify the slice if the given length is out of bounds.
 pub(crate) fn pop_slice<'a>(input: &mut &'a [u8], len: usize) -> Option<&'a [u8]> {
-    input.take(..len)
+    if len < input.len() {
+        let out = Some(&input[..len]);
+        *input = &input[len..];
+        out
+    } else {
+        None
+    }
 }
 
 /// Read from a slice as a u32 in big endian

@@ -1,7 +1,4 @@
 #![no_std]
-#![feature(slice_take)]
-#![feature(cstr_from_bytes_until_nul)]
-#![feature(format_args_nl)]
 
 #[cfg_attr(test, macro_use)]
 pub mod tree;
