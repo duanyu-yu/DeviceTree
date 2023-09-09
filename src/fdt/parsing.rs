@@ -6,7 +6,6 @@ use alloc::{
 use log::{
     info,
     debug,
-    error
 };
 
 use super::header::FdtHeader;

@@ -1,8 +1,4 @@
-use log::{
-    info,
-    debug,
-    error
-};
+use log::debug;
 
 use crate::{
     utils, 
@@ -42,6 +38,32 @@ pub struct FdtHeader {
 }
 
 impl FdtHeader {
+    /// The offset in bytes of the structure block from the beginning of the header.
+    pub const fn off_dt_struct(&self) -> u32 {
+        self.off_dt_struct
+    }
+
+    /// The offset in bytes of the strings block from the beginning of the header.
+    pub const fn off_dt_strings(&self) -> u32 {
+        self.off_dt_strings
+    }
+
+    /// The offset in bytes of the memory reservation block from the beginning of the header.
+    pub const fn off_mem_rsvmap(&self) -> u32 {
+        self.off_mem_rsvmap
+    }
+
+    /// The lowest version of the devicetree data structure with which the version used is backwards compatible.
+    pub const fn last_comp_version(&self) -> u32 {
+        self.last_comp_version
+    }
+
+    /// The physical ID of the system’s boot CPU.
+    /// It shall be identical to the physical ID given in the reg property of that CPU node within the devicetree.
+    pub const fn boot_cpuid_phys(&self) -> u32 {
+        self.boot_cpuid_phys
+    }
+
     pub fn from_bytes(bytes: &mut &[u8]) -> Result<Self, DeviceTreeError> {
         debug!("Parsing FDT header from bytes.");
 

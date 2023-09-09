@@ -1,18 +1,10 @@
 use alloc::rc::Rc;
 
-use crate::{
-	DeviceTree, 
-	DeviceTreeError
+use crate::DeviceTree;
+use crate::tree::node::{
+	DeviceTreeNodeWrap, 
+	DeviceTreeNode
 };
-use crate::tree::{
-	node::{
-		DeviceTreeNodeWrap, 
-		DeviceTreeNode
-	},
-	prop::DeviceTreeProperty
-};
-
-use super::CPU_MAX_NUM;
 
 impl DeviceTree {
 	pub fn new_empty_root() -> Self {

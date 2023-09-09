@@ -48,3 +48,15 @@ pub struct DeviceTreeBlob<'a> {
     structure_block: FdtStructBlock<'a>,
     strings_block: FdtStringsBlock<'a>
 }
+
+impl<'a> DeviceTreeBlob<'a> {
+    /// Gets a reference to the [FdtHeader].
+    pub const fn header(&self) -> &FdtHeader {
+        &self.header
+    }
+
+    /// Gets a reference to the list of [FdtReserveEntry].
+    pub fn memory_reservation_block(&self) -> &[FdtReserveEntry] {
+        self.memory_reservation_block.as_ref()
+    }
+}
